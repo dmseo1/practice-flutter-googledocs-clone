@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const authRouter = require('./routes/auth');
 const dotenv = require('dotenv');
 
@@ -9,16 +10,12 @@ const PORT = process.env.PORT | 3001;
 
 const app = express();
 
+app.use(cors());
 app.use(express.json()); //data manipulation to json format
 app.use(authRouter);
 
 const DB = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}.1ooq9f5.mongodb.net/?retryWrites=true&w=majority`;
 
-// http://localhost:3001/api/signup
-app.post('/api/signup', (req, res) => {
-
-
-});
 
 mongoose.connect(DB).then(() => {
     console.log('Connection successful!');
