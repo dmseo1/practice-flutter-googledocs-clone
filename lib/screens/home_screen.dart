@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:practice_flutter_googledocs_clone/colors.dart';
+import 'package:practice_flutter_googledocs_clone/common/widgets/loader.dart';
+import 'package:practice_flutter_googledocs_clone/models/document_model.dart';
+import 'package:practice_flutter_googledocs_clone/models/error_model.dart';
 import 'package:practice_flutter_googledocs_clone/repository/auth_repository.dart';
 import 'package:practice_flutter_googledocs_clone/repository/document_repository.dart';
 import 'package:practice_flutter_googledocs_clone/repository/local_storage_repository.dart';
@@ -35,6 +38,10 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
+  void navigateToDocument(BuildContext context, String documentId) {
+    Routemaster.of(context).push('/document/$documentId');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
@@ -58,8 +65,46 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Text(ref.watch(userProvider)?.email ?? 'ERROR!'),
+      body: FutureBuilder<ErrorModel?>(
+        future: ref
+            .watch(documentRepositoryProvider)
+            .getDocuments(ref.watch(userProvider)?.token ?? ''),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Loader();
+          }
+          return Center(
+            child: Container(
+              width: 600,
+              margin: const EdgeInsets.symmetric(
+                horizontal: 8,
+              ),
+              child: ListView.builder(
+                itemCount: snapshot.data?.data?.length ?? 0,
+                itemBuilder: (context, index) {
+                  DocumentModel document = snapshot.data?.data[index];
+                  return InkWell(
+                    //GestureDetector 대신에 쓴 이유: 웹에서 애니메이션 효과
+                    onTap: () => navigateToDocument(context, document.id),
+                    child: SizedBox(
+                      height: 50,
+                      child: Card(
+                        child: Center(
+                          child: Text(
+                            document.title,
+                            style: const TextStyle(
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
