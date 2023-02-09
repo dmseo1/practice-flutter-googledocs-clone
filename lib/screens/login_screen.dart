@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:practice_flutter_googledocs_clone/repository/auth_repository.dart';
 import 'package:practice_flutter_googledocs_clone/colors.dart';
-import 'package:practice_flutter_googledocs_clone/screens/home_screen.dart';
+import 'package:routemaster/routemaster.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
   void signInWithGoogle(WidgetRef ref, BuildContext context) async {
     final sMessenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
+    final navigator = Routemaster.of(context);
     //위로 빼는 이유: context 호출에 await로 gap을 주면, gap 이후에 widget이 존재한다고 보장하지 못하기 때문에, context가 destroy되었을 수 있다.
     //context.mounted 로 체크하거나, await 전에 생성해 놓는다.
 
@@ -20,8 +20,7 @@ class LoginScreen extends ConsumerWidget {
       ref.read(userProvider.notifier).update((state) => errorModel.data);
       //성공 응답에서 받은 데이터로 provider를 업데이트한다.
 
-      navigator
-          .push(MaterialPageRoute(builder: (context) => const HomeScreen()));
+      navigator.replace('/');
     } else {
       sMessenger.showSnackBar(
         SnackBar(

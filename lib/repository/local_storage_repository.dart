@@ -1,4 +1,8 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+final localStorageRepositoryProvider =
+    Provider((ref) => LocalStorageRepository());
 
 class LocalStorageRepository {
   void setToken(String token) async {
