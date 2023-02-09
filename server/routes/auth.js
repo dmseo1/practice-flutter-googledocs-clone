@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const { OAuth2Client } = require('google-auth-library');
+const auth = require('../middleware/auth');
 
 const authRouter = express.Router();
 
@@ -29,7 +30,7 @@ authRouter.post('/api/signup', async (req, res) => {
             user = await user.save();
         }
 
-        const token = jwt.sign({id: user._id});
+        const token = jwt.sign({id: user._id}, process.env.JWT_PASSWORD_KEY);
 
         res.status(200).json({ user, token });
     } catch (e) {
@@ -38,9 +39,10 @@ authRouter.post('/api/signup', async (req, res) => {
     }
 });
 
-// authRouter.get('/', auth, async (req, res) => {
-
-// });
+authRouter.get('/', auth, async (req, res) => {
+    const user = await User.findById(req.user);
+    res.json({ user, token: req.token });
+});
 
 
 module.exports = authRouter;
