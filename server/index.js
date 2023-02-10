@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const http = require('http'); //socket 서버를 만들기 위해
+
 const authRouter = require('./routes/auth');
 const dotenv = require('dotenv');
 const documentRouter = require('./routes/document');
@@ -10,6 +12,12 @@ dotenv.config();
 const PORT = process.env.PORT | 3001;
 
 const app = express();
+
+let server = http.createServer(app);
+
+let io = require('socket.io')(server);
+// let socket = require('socket.io);
+// let io = socket(server); 를 줄임
 
 app.use(cors());
 app.use(express.json()); //data manipulation to json format
@@ -25,7 +33,15 @@ mongoose.connect(DB).then(() => {
     console.log(err);
 });
 
+io.on('connection', (socket) => {
+    socket.on('join', (documentId) => {
+        socket.join(documentId);
+        console.log('hello');
+    });
+    console.log('connected ' + socket.id);
+});
 
-app.listen(PORT, '0.0.0.0', (req, res) => {
+
+server.listen(PORT, '0.0.0.0', (req, res) => {
     console.log(`Server is listening on port ${PORT}`);
 });
