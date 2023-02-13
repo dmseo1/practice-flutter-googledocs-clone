@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:practice_flutter_googledocs_clone/colors.dart';
+import 'package:practice_flutter_googledocs_clone/common/widgets/loader.dart';
 import 'package:practice_flutter_googledocs_clone/models/document_model.dart';
 import 'package:practice_flutter_googledocs_clone/models/error_model.dart';
 import 'package:practice_flutter_googledocs_clone/repository/auth_repository.dart';
 import 'package:practice_flutter_googledocs_clone/repository/document_repository.dart';
 import 'package:practice_flutter_googledocs_clone/repository/socket_repository.dart';
+import 'package:routemaster/routemaster.dart';
 
 class DocumentScreen extends ConsumerStatefulWidget {
   final String id;
@@ -23,28 +28,72 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
   TextEditingController titleController =
       TextEditingController(text: 'Untitled Document');
 
-  final quill.QuillController _controller = quill.QuillController.basic();
+  quill.QuillController? _controller;
 
   ErrorModel? errorModel;
 
   SocketRepository socketRepository = SocketRepository();
 
+  Timer? autoSaveTimer;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
     socketRepository.joinRoom(widget.id);
     fetchDocumentData();
+
+    socketRepository.changeListener((data) {
+      _controller?.compose(
+        quill.Delta.fromJson(data['delta']),
+        _controller?.selection ??
+            const TextSelection.collapsed(
+              offset: 0,
+            ),
+        quill.ChangeSource.REMOTE,
+      );
+    });
+
+    autoSaveTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      socketRepository.autoSave(<String, dynamic>{
+        'documentId': widget.id,
+        'room': widget.id,
+        'delta': _controller?.document.toDelta() ??
+            (throw Exception(['No controller has been attached!'])),
+      });
+    });
   }
 
   void fetchDocumentData() async {
     errorModel = await ref
         .read(documentRepositoryProvider)
         .getDocumentById(ref.read(userProvider)?.token ?? '', widget.id);
+    final data = DocumentModel.fromMap(errorModel?.data);
     if (errorModel?.data != null) {
-      print(errorModel?.data.runtimeType);
-      titleController.text = (DocumentModel.fromMap(errorModel?.data)).title;
+      titleController.text = data.title;
+
+      _controller = quill.QuillController(
+        document: data.content.isEmpty
+            ? quill.Document()
+            : quill.Document.fromDelta(quill.Delta.fromJson(data.content)),
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+      setState(() {});
+
+      _controller?.document.changes.listen((event) {
+        // 1 -> entire content of document
+        // 2 -> changesthat are made from the previous part
+        // 3-> local? -> we have typed remote?
+
+        if (event.item3 == quill.ChangeSource.LOCAL) {
+          Map<String, dynamic> map = {
+            'delta': event.item2,
+            'room': widget.id,
+          };
+
+          socketRepository.typing(map);
+        }
+      });
     }
   }
 
@@ -52,6 +101,8 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
   void dispose() {
     super.dispose();
     titleController.dispose();
+    _controller?.dispose();
+    autoSaveTimer?.cancel();
   }
 
   void updateTitle(WidgetRef ref, String title) async {
@@ -64,6 +115,10 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_controller == null) {
+      return const Scaffold(body: Loader());
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: kWhiteColor,
@@ -72,7 +127,19 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(
+                    text: 'http://localhost:3000/#/document/${widget.id}',
+                  ),
+                ).then((value) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Link Copied!'),
+                    ),
+                  );
+                });
+              },
               icon: const Icon(
                 Icons.lock,
                 color: kWhiteColor,
@@ -91,9 +158,14 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
           ),
           child: Row(
             children: [
-              Image.asset(
-                'assets/images/docs-logo.png',
-                height: 40,
+              GestureDetector(
+                onTap: () {
+                  Routemaster.of(context).replace('/');
+                },
+                child: Image.asset(
+                  'assets/images/docs-logo.png',
+                  height: 40,
+                ),
               ),
               const SizedBox(
                 width: 10,
@@ -137,7 +209,14 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
             const SizedBox(
               height: 10,
             ),
-            quill.QuillToolbar.basic(controller: _controller),
+            quill.QuillToolbar.basic(
+              controller: _controller ??
+                  (throw Exception(
+                    [
+                      'No controller has been attached',
+                    ],
+                  )),
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -147,7 +226,12 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(30.0),
                     child: quill.QuillEditor.basic(
-                      controller: _controller,
+                      controller: _controller ??
+                          (throw Exception(
+                            [
+                              'No controller has been attached',
+                            ],
+                          )),
                       readOnly: false, // true for view only mode
                     ),
                   ),

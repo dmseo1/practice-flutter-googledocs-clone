@@ -39,6 +39,20 @@ authRouter.post('/api/signup', async (req, res) => {
     }
 });
 
+authRouter.get('/api/signupResult', async (req, res) => {
+    console.log(req.query);
+    console.log('called get!');
+
+    res.status(200).send(req.query);
+});
+
+authRouter.post('/api/signupResult', async (req, res) => {
+    console.log(req.body);
+    console.log('called post!');
+
+    res.status(200).send(req.body);
+});
+
 authRouter.get('/', auth, async (req, res) => {
     const user = await User.findById(req.user);
     res.json({ user, token: req.token });

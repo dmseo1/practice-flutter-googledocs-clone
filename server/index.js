@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http'); //socket 서버를 만들기 위해
 
+const Document = require('./models/document');
+
 const authRouter = require('./routes/auth');
 const dotenv = require('dotenv');
 const documentRouter = require('./routes/document');
@@ -26,6 +28,7 @@ app.use(documentRouter);
 
 const DB = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}.1ooq9f5.mongodb.net/?retryWrites=true&w=majority`;
 
+mongoose.set('strictQuery', false);
 
 mongoose.connect(DB).then(() => {
     console.log('Connection successful!');
@@ -38,8 +41,25 @@ io.on('connection', (socket) => {
         socket.join(documentId);
         console.log('hello');
     });
+
+    socket.on('typing', (data) => {
+        socket.broadcast.to(data.room).emit('changes', data);
+    });
+
+    socket.on('save', async (data) => {
+        console.log(data);
+        await saveData(data);
+        socket.to() //실행한 socket 에만
+    });
     console.log('connected ' + socket.id);
 });
+
+const saveData = async (data) => {
+    let document = await Document.findById(data.documentId);
+    document.content = data.delta;
+    document = await document.save();
+
+};
 
 
 server.listen(PORT, '0.0.0.0', (req, res) => {

@@ -70,9 +70,32 @@ class AuthRepository {
   }
 
   Future<ErrorModel> signInWithGoogle() async {
+    // const AUTH_ENDIPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+    // const CLIENT_ID =
+    //     '*';
+    // const REDIRECT_URI = 'http://localhost:3001/api/signupResult';
+    // const TOKEN_ENDPOINT = "https://www.googleapis.com/oauth2/v4/token";
+
+    // var scopes = [
+    //   "https://www.googleapis.com/auth/userinfo.email",
+    //   "https://www.googleapis.com/auth/userinfo.profile",
+    // ];
+
     ErrorModel error =
         ErrorModel(error: 'Some unexpected error occured', data: null);
     try {
+      // FlutterAppAuth appAuth = const FlutterAppAuth();
+
+      // AuthorizationTokenResponse? result =
+      //     await appAuth.authorizeAndExchangeCode(AuthorizationTokenRequest(
+      //         CLIENT_ID, REDIRECT_URI,
+      //         serviceConfiguration: const AuthorizationServiceConfiguration(
+      //             authorizationEndpoint: AUTH_ENDIPOINT,
+      //             tokenEndpoint: TOKEN_ENDPOINT),
+      //         scopes: scopes));
+
+      // print(result);
+
       final user = await _googleSignIn.signIn();
 
       if (user != null) {
@@ -99,6 +122,7 @@ class AuthRepository {
         }
       }
     } catch (e) {
+      print(e);
       error = ErrorModel(
         error: e.toString(),
         data: null,
